@@ -15,15 +15,11 @@ import {
   View
 } from 'react-native';
 
-import Header from './header';
-import UjlListView from './UjlListView';
-
-export default class Home extends Component {
+export default class Header extends Component {
   render () {
     return (
       <View style={styles.container}>
-        <Header />
-        <UjlListView />
+        <Text>Header标题</Text>
       </View>
     );
   }

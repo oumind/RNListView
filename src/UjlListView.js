@@ -19,6 +19,8 @@ import {
   View,
 } from 'react-native';
 
+import Header from './header';
+
 export default class UjlListView extends Component {
   constructor(props: Props) {
     super(props);
@@ -28,6 +30,8 @@ export default class UjlListView extends Component {
 
     let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
     this.state = {
+      renderSize: 5,
+      scrollable: false,
       dataSource: ds.cloneWithRows(mockArray),
     };
 
@@ -37,9 +41,7 @@ export default class UjlListView extends Component {
   
   _renderHeader(): ?ReactElement {
     return (
-      <View style={styles.ListViewHeader}>
-        <Text style={styles.ListTitle}>标题</Text>
-      </View>
+      <Header />
     );
   }
   
@@ -107,7 +109,9 @@ export default class UjlListView extends Component {
     return (
       <ListView style={styles.card}
         dataSource={this.state.dataSource}
+        initialListSize={this.state.renderSize}
         renderHeader={this._renderHeader}
+        scrollEnabled={this.state.scrollable}
         renderRow={this._renderRow}
         renderScrollComponent={props => <RecyclerViewBackedScrollView {...props} />}
         renderFooter={this._renderFooter}
@@ -133,8 +137,7 @@ function hashCode(str) {
 
 var styles = StyleSheet.create({
   card: {
-    paddingLeft: 10,
-    paddingRight: 10,
+    
   },
   flexContainer: {
     flexDirection: 'row'
@@ -175,6 +178,8 @@ var styles = StyleSheet.create({
   },
   rowBg: {
     backgroundColor: '#FFF',
+    marginLeft: 10,
+    marginRight: 10,
   },
   separator: {
     height: 1,
