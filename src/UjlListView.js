@@ -1,6 +1,6 @@
 /**
  * Copyright 2016 UVO PLUS TECH CO., LTD.
- * The Ujl ListView Component.
+ * The Ujl common ListView Component.
  * @flow
  */
 
@@ -10,180 +10,307 @@ import React, {
   Component
 } from 'react';
 import {
-  Image,
   ListView,
+  Platform,
   TouchableHighlight,
-  StyleSheet,
-  RecyclerViewBackedScrollView,
-  Text,
   View,
+  Text,
+  RefreshControl,
+  StyleSheet,
 } from 'react-native';
 
-import Header from './header';
+import UjlSpinner from './UjlSpinner';
 
-export default class UjlListView extends Component {
+class UjlListView extends Component {
   constructor(props: Props) {
     super(props);
-    var mockArray = Array(101).join("1").split("").map(function(el,index){
-      return 'xxx刚干了什么 '+ (index+1)
-    })
 
-    let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
-    this.state = {
-      renderSize: 5,
-      scrollable: false,
-      dataSource: ds.cloneWithRows(mockArray),
-    };
+    this._setPage(1);
+    this._setRows([]);
 
-    this._renderFooter = this._renderFooter.bind(this);
-    this._onContentSizeChange = this._onContentSizeChange.bind(this);
+    let ds = null;
+    if (this.props.withSections === true) {
+      ds = new ListView.DataSource({
+        rowHasChanged: (row1, row2) => row1 !== row2,
+        sectionHeaderHasChanged: (section1, section2) => section1 !== section2,
+      });
+      this.state = {
+        dataSource: ds.cloneWithRowsAndSections(this._getRows()),
+        isRefreshing: false,
+        paginationStatus: 'firstLoad',
+      };
+    } else {
+      ds = new ListView.DataSource({
+        rowHasChanged: (row1, row2) => row1 !== row2,
+      });
+      this.state = {
+        dataSource: ds.cloneWithRows(this._getRows()),
+        isRefreshing: false,
+        paginationStatus: 'firstLoad',
+      };
+    }
+
+    this._updateRows = this._updateRows.bind(this);
+    this._headerView = this._headerView.bind(this);
+    this._renderPaginationView = this._renderPaginationView.bind(this);
+    this._onPaginate = this._onPaginate.bind(this);
+    this._postPaginate = this._postPaginate.bind(this);
+    this._onRefresh = this._onRefresh.bind(this);
   }
-  
-  _renderHeader(): ?ReactElement {
+
+  componentDidMount() {
+    this.props.onFetch(this._getPage(), this._updateRows, { firstLoad: true });
+  }
+
+  _setPage(page) { this._page = page; }
+  _getPage() { return this._page; }
+  _setRows(rows) { this._rows = rows; }
+  _getRows() { return this._rows; }
+
+  _headerView() {
+    if (this.state.paginationStatus === 'firstLoad' || !this.props.headerView) {
+      return null;
+    }
+    return this.props.headerView();
+  }
+
+  _updateRows(rows = [], options = {}) {
+    if (rows !== null) {
+      this._setRows(rows);
+      if (this.props.withSections === true) {
+        this.setState({
+          dataSource: this.state.dataSource.cloneWithRowsAndSections(rows),
+          isRefreshing: false,
+          paginationStatus: (options.allLoaded === true ? 'allLoaded' : 'waiting'),
+        });
+      } else {
+        this.setState({
+          dataSource: this.state.dataSource.cloneWithRows(rows),
+          isRefreshing: false,
+          paginationStatus: (options.allLoaded === true ? 'allLoaded' : 'waiting'),
+        });
+      }
+    } else {
+      this.setState({
+        isRefreshing: false,
+        paginationStatus: (options.allLoaded === true ? 'allLoaded' : 'waiting'),
+      });
+    }
+  }
+
+  /**
+   * 加载更多
+   */
+  _loadMoreView(paginateCallback) {
     return (
-      <Header />
-    );
-  }
-  
-  _renderFooter(): ?ReactElement {
-    if (this.state.dataSource.getRowCount() === 0) {
-      return this.props.renderEmptyList && this.props.renderEmptyList();
-    }
-
-    return this.props.renderFooter && this.props.renderFooter();
-  }
-  
-  _onContentSizeChange(contentWidth: number, contentHeight: number) {
-    if (contentHeight !== this.state.contentHeight) {
-      this.setState({contentHeight});
-    }
-  }
-  
-  _genRows (pressData: {[key: number]: boolean}): Array<string> {
-    var dataBlob = [];
-    for (var ii = 0; ii < 100; ii++) {
-      var pressedText = pressData[ii] ? ' (pressed)' : '';
-      dataBlob.push('Row ' + ii + pressedText);
-    }
-    return dataBlob;
-  }
-
-  _pressRow (rowID: number) {
-    this._pressData[rowID] = !this._pressData[rowID];
-    this.setState({dataSource: this.state.dataSource.cloneWithRows(
-      this._genRows(this._pressData)
-    )});
-  }
-  
-  _renderRow (rowData: string, sectionID: number, rowID: number) {
-    var rowHash = Math.abs(hashCode(rowData));
-    var imgSource = THUMB_URLS[rowHash % THUMB_URLS.length];
-    return (
-      <TouchableHighlight onPress={() => this._pressRow(rowID)}>
-        <View style={styles.rowBg}>
-          <View style={styles.row}>
-            <View style={styles.flexContainer, styles.rowHeader}>
-              <Text style={styles.title}>
-                {rowData}
-              </Text>
-              <Text style={styles.time}>
-                刚刚
-              </Text>
-            </View>
-            <View style={styles.flexContainer}>
-              <View style={styles.flexBlock}>
-                <Text style={styles.content}>
-                    {LOREM_IPSUM.substr(0, rowHash % 301 + 10)}
-                  </Text>
-              </View>
-              <Image style={styles.thumbnail} source={imgSource} />
-            </View>
-          </View>
-          <View key={`${sectionID}-${rowID}`} style={styles.separator} />
-        </View>
+      <TouchableHighlight
+        underlayColor='#c8c7cc'
+        onPress={paginateCallback}
+        >
+        <Text>
+          加载更多...
+        </Text>
       </TouchableHighlight>
     );
   }
-  
-  render () {
+
+  /**
+   * 翻页中
+   */
+  _onPaginate() {
+    if (this.state.paginationStatus === 'allLoaded') {
+      return null
+    } else {
+      this.setState({
+        paginationStatus: 'fetching',
+      });
+      this.props.onFetch(this._getPage() + 1, this._postPaginate, {});
+    }
+  }
+
+  /**
+   * 翻页成功后，合并列表
+   */
+  _postPaginate(rows = [], options = {}) {
+    this._setPage(this._getPage() + 1);
+    var mergedRows = null;
+    if (this.props.withSections === true) {
+      mergedRows = MergeRecursive(this._getRows(), rows);
+    } else {
+      mergedRows = this._getRows().concat(rows);
+    }
+    this._updateRows(mergedRows, options);
+  }
+
+  /**
+   * 列表内容为空
+   */
+  _emptyView(refreshCallback) {
+    let emptyListTip = '没有内容可以显示';
+    if (this.props.emptyListTip) {
+      emptyListTip = this.props.emptyListTip;
+    }
     return (
-      <ListView style={styles.card}
-        dataSource={this.state.dataSource}
-        initialListSize={this.state.renderSize}
-        renderHeader={this._renderHeader}
-        scrollEnabled={this.state.scrollable}
-        renderRow={this._renderRow}
-        renderScrollComponent={props => <RecyclerViewBackedScrollView {...props} />}
-        renderFooter={this._renderFooter}
+      <View>
+        <Text>
+          {emptyListTip}
+        </Text>
+
+        <TouchableHighlight
+          underlayColor='#c8c7cc'
+          onPress={refreshCallback}
+          >
+          <Text>
+            ↻
+          </Text>
+        </TouchableHighlight>
+      </View>
+    );
+  }
+
+  /**
+   * 刷新列表
+   */
+  _onRefresh(options = {}, isFetching=false) {
+    //options ＝ {external: true}
+    console.log(this._getRows);
+    this.setState({
+      isRefreshing: true
+    });
+    this._setPage(1);
+    this.props.onFetch(this._getPage(), this._updateRows, options);
+  }
+
+  /**
+   * 渲染列表内容各种状态结果
+   * 1. 正在翻页或首次加载；
+   * 2. 加载更多；
+   * 3. 列表全部加载完成；
+   * 4. 空列表；
+   * 5. 其他；
+   */
+  _renderPaginationView() {
+    if ((this.state.paginationStatus === 'fetching' && this.props.pagination === true)
+      || (this.state.paginationStatus === 'firstLoad' && this.props.firstLoader === true)) {
+      return (
+        <View>
+          <UjlSpinner />
+        </View>
+      );
+    } else if (this.state.paginationStatus === 'waiting' && this.props.pagination === true && (this.props.withSections === true || this._getRows().length > 0)) {
+      return this._loadMoreView(this._onPaginate);
+    } else if (this.state.paginationStatus === 'allLoaded' && this.props.pagination === true) {
+      return (
+        <View>
+          <Text>
+            ~没有更多了~
+          </Text>
+        </View>
+      );
+    } else if (this._getRows().length === 0) {
+      return this._emptyView(this._onRefresh);
+    } else {
+      return null;
+    }
+  }
+  
+  _renderRefreshControl() {
+    if (this.props.renderRefreshControl) {
+      return this.props.renderRefreshControl({ onRefresh: this._onRefresh });
+    }
+    return (
+      <RefreshControl
+        onRefresh={this._onRefresh}
+        refreshing={this.state.isRefreshing}
+        colors={this.props.refreshableColors}
+        progressBackgroundColor={this.props.refreshableProgressBackgroundColor}
+        size={this.props.refreshableSize}
+        tintColor={this.props.refreshableTintColor}
+        title={this.props.refreshableTitle}
       />
     );
   }
-}
 
-var THUMB_URLS = [
-  require('./img/image1.jpg'),
-  require('./img/image2.jpg'),
-  require('./img/team.jpg'),
-  ];
-var LOREM_IPSUM = '接36-503业主电话报修，家中阳台处墙面渗水，是楼上管子渗水导致的';
+  render() {
+    return (
+      <ListView
+        ref="listview"
+        dataSource={this.state.dataSource}
+        renderRow={this.props.rowView}
+        renderSectionHeader={this.props.sectionHeaderView}
+        renderHeader={this._headerView}
+        renderFooter={this._renderPaginationView}
+        refreshControl={this.props.refreshable === true ? this._renderRefreshControl() : null}
+        renderSeparator={(sectionID, rowID) => <View key={`${sectionID}-${rowID}`} style={[styles.separator, this.props.customStyles.separator]} />}
 
-function hashCode(str) {
-  var hash = 15;
-  for (var ii = str.length - 1; ii >= 0; ii--) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(ii);
+        {...this.props}
+
+        style={this.props.style}
+        />
+    );
   }
-  return hash;
 };
 
+/**
+ * ListView组件入参定义
+ */
+UjlListView.propTypes = {
+  customStyles: React.PropTypes.object,
+
+  refreshable: React.PropTypes.bool, // 启用下拉或手动点击刷新
+  firstLoader: React.PropTypes.bool, // 首次加载时显示spinner
+  pagination: React.PropTypes.bool, // 启用无限滚动加载更多
+  autoPagination: React.PropTypes.bool, // 自动加载更多
+  withSections: React.PropTypes.bool,
+  scrollEnabled: React.PropTypes.bool,
+
+  emptyListTip: React.PropTypes.string,
+
+  headerView: React.PropTypes.func,
+  sectionHeaderView: React.PropTypes.func,
+
+  onFetch: React.PropTypes.func,
+};
+UjlListView.defaultProps = {
+  customStyles: {},
+  refreshable: true,
+  firstLoader: true,
+  pagination: true,
+  withSections: false,
+  scrollEnabled: true,
+
+  emptyListTip: '',
+
+  headerView: null,
+  sectionHeaderView: null,
+
+  onFetch(page, callback, options) { callback([]); }
+};
+
+/**
+ * 合并两个数组（翻页内容和原内容合并）
+ */
+function MergeRecursive(obj1, obj2) {
+  for (var p in obj2) {
+    try {
+      if (obj2[p].constructor == Object) {
+        obj1[p] = MergeRecursive(obj1[p], obj2[p]);
+      } else {
+        obj1[p] = obj2[p];
+      }
+    } catch (e) {
+      obj1[p] = obj2[p];
+    }
+  }
+  return obj1;
+}
+
 var styles = StyleSheet.create({
-  card: {
-    
-  },
-  flexContainer: {
-    flexDirection: 'row'
-  },
-  flexBlock: {
-    flex: 1
-  },
-  ListViewHeader: {
-    paddingTop: 35,
-    paddingLeft: 10,
-    paddingRight: 10,
-    paddingBottom: 10,
-  },
-  rowHeader: {
-    marginBottom: 3,
-    flexDirection: 'row'
-  },
-  title: {
-    fontSize: 12,
-    flex: 1,
-    color: '#888D85'
-  },
-  time: {
-    fontSize: 12,
-    flex: 1,
-    textAlign: 'right',
-    color: '#888D85'
-  },
-  content: {
-    color: '#333'
-  },
-  thumbnail: {
-    width: 64,
-    height: 64,
-  },
-  row: {
-    padding: 10,
-  },
-  rowBg: {
-    backgroundColor: '#FFF',
-    marginLeft: 10,
-    marginRight: 10,
-  },
   separator: {
     height: 1,
-    backgroundColor: '#F0F0F0',
-    marginLeft: 10
-  },
+    backgroundColor: '#F7F7F7',
+    marginLeft: 20
+  }
 });
+
+export default UjlListView;
