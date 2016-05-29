@@ -22,6 +22,39 @@ import {
 import UjlSpinner from './UjlSpinner';
 
 class UjlListView extends Component {
+  static propTypes = {
+    customStyles: React.PropTypes.object,
+
+    refreshable: React.PropTypes.bool, // 启用下拉或手动点击刷新
+    firstLoader: React.PropTypes.bool, // 首次加载时显示spinner
+    pagination: React.PropTypes.bool, // 启用无限滚动加载更多
+    autoPagination: React.PropTypes.bool, // 自动加载更多
+    withSections: React.PropTypes.bool,
+    scrollEnabled: React.PropTypes.bool,
+
+    emptyListTip: React.PropTypes.string,
+
+    headerView: React.PropTypes.func,
+    sectionHeaderView: React.PropTypes.func,
+
+    onFetch: React.PropTypes.func,
+  }
+
+  static defaultProps = {
+    customStyles: {},
+    refreshable: true,
+    firstLoader: true,
+    pagination: true,
+    withSections: false,
+    scrollEnabled: true,
+
+    emptyListTip: '',
+
+    headerView: null,
+    sectionHeaderView: null,
+
+    onFetch(page, callback, options) { callback([]); }
+  }
   constructor(props: Props) {
     super(props);
 
@@ -213,7 +246,7 @@ class UjlListView extends Component {
       return null;
     }
   }
-  
+
   _renderRefreshControl() {
     if (this.props.renderRefreshControl) {
       return this.props.renderRefreshControl({ onRefresh: this._onRefresh });
@@ -249,42 +282,6 @@ class UjlListView extends Component {
         />
     );
   }
-};
-
-/**
- * ListView组件入参定义
- */
-UjlListView.propTypes = {
-  customStyles: React.PropTypes.object,
-
-  refreshable: React.PropTypes.bool, // 启用下拉或手动点击刷新
-  firstLoader: React.PropTypes.bool, // 首次加载时显示spinner
-  pagination: React.PropTypes.bool, // 启用无限滚动加载更多
-  autoPagination: React.PropTypes.bool, // 自动加载更多
-  withSections: React.PropTypes.bool,
-  scrollEnabled: React.PropTypes.bool,
-
-  emptyListTip: React.PropTypes.string,
-
-  headerView: React.PropTypes.func,
-  sectionHeaderView: React.PropTypes.func,
-
-  onFetch: React.PropTypes.func,
-};
-UjlListView.defaultProps = {
-  customStyles: {},
-  refreshable: true,
-  firstLoader: true,
-  pagination: true,
-  withSections: false,
-  scrollEnabled: true,
-
-  emptyListTip: '',
-
-  headerView: null,
-  sectionHeaderView: null,
-
-  onFetch(page, callback, options) { callback([]); }
 };
 
 /**
