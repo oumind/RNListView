@@ -1,5 +1,4 @@
-
-'use strict';
+'use strict'
 
 import React, {
   Component
@@ -39,5 +38,4 @@ class UjlSpinner extends Component {
     );
   }
 };
-
 export default UjlSpinner;
